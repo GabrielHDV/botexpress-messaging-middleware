@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     environment: str = "development"
-    app_name: str = "BotExpress Messaging Middleware"
+    app_name: str = "Botpress Messaging Middleware"
 
     webhook_secret: str | None = None
 
@@ -17,11 +17,9 @@ class Settings(BaseSettings):
     evolution_instance_name: str | None = None
     evolution_api_key: str | None = None
 
-    botexpress_base_url: str | None = None
-    botexpress_api_key: str | None = None
-    botexpress_endpoint_path: str | None = None
-    botexpress_auth_header: str = "Authorization"
-    botexpress_auth_scheme: str = "Bearer"
+    botpress_webhook_id: str | None = None
+    botpress_polling_attempts: int = 8
+    botpress_polling_interval: float = 1.0
 
     request_timeout: int = 10
 
