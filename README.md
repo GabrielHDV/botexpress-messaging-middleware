@@ -369,11 +369,10 @@ Esta versão representa um MVP técnico do middleware e possui algumas limitaç�
 
 ### Idempotência
 
-O controle de idempotência atual utiliza armazenamento em memória por meio de um `set` global.
+O controle de idempotência utiliza Redis com TTL de 24 horas, garantindo que mensagens duplicadas sejam descartadas mesmo em caso de reinício da aplicação.
 
-Essa abordagem funciona para demonstração local, mas não é adequada para produção, pois os dados são perdidos em caso de reinício da aplicação, novo deploy, crash ou execução em múltiplas instâncias.
+Em ambiente com múltiplas instâncias, o Redis centralizado mantém o estado compartilhado entre os processos.
 
-Em produção, recomenda-se substituir essa implementação por Redis com TTL ou banco de dados.
 
 ### Integração com Botpress
 
