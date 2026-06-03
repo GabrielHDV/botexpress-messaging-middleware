@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     environment: str = "development"
     app_name: str = "BotExpress Messaging Middleware"
 
+    webhook_secret: str | None = None
+
     messaging_provider: str = "zapi"
 
     zapi_instance_id: str | None = None

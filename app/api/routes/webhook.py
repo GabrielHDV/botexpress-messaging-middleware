@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Body
+from fastapi import APIRouter, Body, Depends
 
+from app.core.auth import validate_webhook_secret
 from app.core.logger import logger
 from app.core.security import mask_phone
 from app.providers.factory import get_messaging_provider
@@ -8,8 +9,11 @@ from app.services.botexpress_service import BotExpressService
 from app.services.idempotency_service import mark_as_processed, was_processed
 from app.services.payload_parser import parse_evolution_payload, parse_zapi_payload
 
-router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
-
+router = APIRouter(
+    prefix="/webhooks",
+    tags=["Webhooks"],
+    dependencies=[Depends(validate_webhook_secret)],
+)
 
 async def process_incoming_message(incoming: IncomingMessage) -> dict:
     logger.info(
