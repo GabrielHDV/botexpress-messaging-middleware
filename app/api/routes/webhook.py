@@ -3,6 +3,7 @@ from fastapi import APIRouter, Body, Depends
 from app.core.auth import validate_webhook_secret
 from app.core.logger import logger
 from app.core.security import mask_phone
+from app.providers.base import MessagingProvider
 from app.providers.factory import get_messaging_provider
 from app.schemas.message import IncomingMessage, OutgoingMessage
 from app.services.botexpress_service import BotExpressService
@@ -15,7 +16,11 @@ router = APIRouter(
     dependencies=[Depends(validate_webhook_secret)],
 )
 
-async def process_incoming_message(incoming: IncomingMessage) -> dict:
+
+async def process_incoming_message(
+    incoming: IncomingMessage,
+    provider: MessagingProvider,
+) -> dict:
     logger.info(
         "Mensagem recebida | provider=%s | phone=%s | message_id=%s",
         incoming.provider,
@@ -38,8 +43,6 @@ async def process_incoming_message(incoming: IncomingMessage) -> dict:
         }
 
     bot_response = await BotExpressService().send_message(incoming)
-
-    provider = get_messaging_provider()
 
     await provider.send_text(
         OutgoingMessage(
@@ -75,13 +78,14 @@ async def receive_zapi_message(
                 "message": "Olá"
             },
             "messageId": "abc123",
-            "senderName": "Gabriel"
+            "senderName": "Gabriel",
         },
-    )
+    ),
+    provider: MessagingProvider = Depends(get_messaging_provider),
 ):
     incoming = parse_zapi_payload(payload)
 
-    return await process_incoming_message(incoming)
+    return await process_incoming_message(incoming, provider)
 
 
 @router.post("/evolution")
@@ -92,16 +96,17 @@ async def receive_evolution_message(
             "data": {
                 "key": {
                     "remoteJid": "5535999999999@s.whatsapp.net",
-                    "id": "msg123"
+                    "id": "msg123",
                 },
                 "message": {
                     "conversation": "Olá"
                 },
-                "pushName": "Gabriel"
+                "pushName": "Gabriel",
             }
         },
-    )
+    ),
+    provider: MessagingProvider = Depends(get_messaging_provider),
 ):
     incoming = parse_evolution_payload(payload)
 
-    return await process_incoming_message(incoming)
+    return await process_incoming_message(incoming, provider)
