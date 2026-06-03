@@ -1,9 +1,21 @@
 import httpx
-from fastapi import Request
+from fastapi import HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.core.logger import logger
+
+
+async def http_exception_handler(request: Request, exc: HTTPException):
+    logger.warning("Erro HTTP tratado: %s", exc.detail)
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "error": "http_error",
+            "message": exc.detail,
+        },
+    )
 
 
 async def validation_exception_handler(request: Request, exc: RequestValidationError):

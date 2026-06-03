@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Body
 
 from app.core.logger import logger
 from app.core.security import mask_phone
@@ -62,16 +62,42 @@ async def process_incoming_message(incoming: IncomingMessage) -> dict:
 
 
 @router.post("/zapi")
-async def receive_zapi_message(request: Request):
-    payload = await request.json()
+async def receive_zapi_message(
+    payload: dict = Body(
+        ...,
+        example={
+            "phone": "5535999999999",
+            "text": {
+                "message": "Olá"
+            },
+            "messageId": "abc123",
+            "senderName": "Gabriel"
+        },
+    )
+):
     incoming = parse_zapi_payload(payload)
 
     return await process_incoming_message(incoming)
 
 
 @router.post("/evolution")
-async def receive_evolution_message(request: Request):
-    payload = await request.json()
+async def receive_evolution_message(
+    payload: dict = Body(
+        ...,
+        example={
+            "data": {
+                "key": {
+                    "remoteJid": "5535999999999@s.whatsapp.net",
+                    "id": "msg123"
+                },
+                "message": {
+                    "conversation": "Olá"
+                },
+                "pushName": "Gabriel"
+            }
+        },
+    )
+):
     incoming = parse_evolution_payload(payload)
 
     return await process_incoming_message(incoming)
