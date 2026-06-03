@@ -6,7 +6,7 @@ from app.core.security import mask_phone
 from app.providers.base import MessagingProvider
 from app.providers.factory import get_messaging_provider
 from app.schemas.message import IncomingMessage, OutgoingMessage
-from app.services.botexpress_service import BotExpressService
+from app.services.botpress_service import BotpressService
 from app.services.idempotency_service import mark_as_processed, was_processed
 from app.services.payload_parser import parse_evolution_payload, parse_zapi_payload
 
@@ -42,7 +42,7 @@ async def process_incoming_message(
             "message_id": incoming.message_id,
         }
 
-    bot_response = await BotExpressService().send_message(incoming)
+    bot_response = await BotpressService().send_message(incoming)
 
     await provider.send_text(
         OutgoingMessage(

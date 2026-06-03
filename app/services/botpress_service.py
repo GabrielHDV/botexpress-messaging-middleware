@@ -12,7 +12,7 @@ logger = logging.getLogger("botexpress-messaging-middleware")
 _MAX_RETRIES = 3
 _RETRY_BACKOFF = [1, 2, 4] 
 
-class BotExpressService:
+class BotpressService:
     async def send_message(self, incoming: IncomingMessage) -> BotResponse:
         if (
             not settings.botexpress_base_url
