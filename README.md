@@ -201,6 +201,8 @@ Exemplo de payload:
 ENVIRONMENT=development
 APP_NAME=BotExpress Messaging Middleware
 
+WEBHOOK_SECRET=change-me
+
 MESSAGING_PROVIDER=zapi
 
 ZAPI_INSTANCE_ID=
@@ -213,10 +215,82 @@ EVOLUTION_API_KEY=
 
 BOTEXPRESS_BASE_URL=
 BOTEXPRESS_API_KEY=
-BOTEXPRESS_BOT_ID=
+BOTEXPRESS_ENDPOINT_PATH=
+BOTEXPRESS_AUTH_HEADER=Authorization
+BOTEXPRESS_AUTH_SCHEME=Bearer
 
 REQUEST_TIMEOUT=10
 ```
+
+## Autenticação dos webhooks
+
+Os endpoints de webhook utilizam uma autenticação simples baseada no header:
+
+```http
+X-Webhook-Secret: change-me
+```
+
+Quando a variável `WEBHOOK_SECRET` está configurada, todas as chamadas aos webhooks precisam enviar o mesmo valor no header `X-Webhook-Secret`.
+
+Caso o header esteja ausente ou incorreto, a API retorna:
+
+```json
+{
+  "error": "http_error",
+  "message": "Webhook secret inválido ou ausente"
+}
+```
+
+Essa abordagem reduz o risco de chamadas não autorizadas aos endpoints públicos do middleware.
+
+## Adapter BotExpress
+
+A integração com o BotExpress foi implementada como um adapter configurável.
+
+As informações de endpoint, autenticação e caminho da API são definidas por variáveis de ambiente:
+
+```env
+BOTEXPRESS_BASE_URL=
+BOTEXPRESS_API_KEY=
+BOTEXPRESS_ENDPOINT_PATH=
+BOTEXPRESS_AUTH_HEADER=Authorization
+BOTEXPRESS_AUTH_SCHEME=Bearer
+```
+
+Essa decisão evita acoplamento com um endpoint fixo e permite ajustar a integração conforme a documentação oficial, credenciais ou ambiente real disponibilizado para o desafio.
+
+## Escopo de mensagens
+
+Esta versão do middleware processa apenas mensagens textuais.
+
+Payloads contendo mídia, como imagem, áudio, vídeo, documento, figurinha, localização ou contato, retornam:
+
+```json
+{
+  "error": "http_error",
+  "message": "Tipo de mensagem não suportado nesta versão. O middleware processa apenas mensagens textuais."
+}
+```
+
+Essa decisão mantém o escopo inicial objetivo e evita processamentos incompletos de mídia sem tratamento adequado.
+
+## Seleção de provedor
+
+O provedor de mensageria é definido pela variável:
+
+```env
+MESSAGING_PROVIDER=zapi
+```
+
+Valores suportados inicialmente:
+
+```txt
+zapi
+evolution
+```
+
+A seleção do provedor utiliza cache com `lru_cache` e injeção de dependência com `Depends`, evitando recriação desnecessária do provider a cada requisição.
+
 
 ## Seleção de provedor
 
@@ -273,15 +347,23 @@ pytest -q
 
 ## Decisões técnicas
 
-A aplicação foi construída com foco em desacoplamento.
+A aplicação foi construída com foco em desacoplamento e evolução gradual.
 
-A camada `providers` permite trocar o provedor externo de mensageria sem alterar a regra principal da aplicação.
+A camada `api` concentra as rotas HTTP e webhooks.
 
-A camada `services` concentra integrações e regras auxiliares, como comunicação com BotExpress, normalização de payloads e idempotência.
+A camada `providers` concentra as integrações com provedores externos de mensageria, como Z-API e Evolution API.
+
+A camada `services` concentra integrações e regras auxiliares, como comunicação com BotExpress, normalização de payloads e controle de idempotência.
 
 A camada `schemas` define modelos normalizados para entrada, saída e resposta do bot.
 
 A camada `exceptions` padroniza os erros retornados pela API.
+
+A camada `core` concentra configurações, autenticação simples de webhook, logger e utilitários de segurança.
+
+O projeto utiliza `Depends` do FastAPI para injetar o provedor de mensageria nas rotas, e `lru_cache` para evitar recriações desnecessárias da instância do provider.
+
+A integração com o BotExpress foi mantida como adapter configurável, permitindo ajuste do endpoint e do formato de autenticação conforme o ambiente real.
 
 ## Observações
 
