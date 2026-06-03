@@ -1,4 +1,11 @@
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: botexpress-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+
   api:
     build: .
     container_name: botexpress-messaging-middleware
@@ -7,3 +14,5 @@ services:
     env_file:
       - .env
     restart: unless-stopped
+    depends_on:
+      - redis
