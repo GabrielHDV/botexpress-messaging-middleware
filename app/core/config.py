@@ -19,7 +19,9 @@ class Settings(BaseSettings):
 
     botexpress_base_url: str | None = None
     botexpress_api_key: str | None = None
-    botexpress_bot_id: str | None = None
+    botexpress_endpoint_path: str | None = None
+    botexpress_auth_header: str = "Authorization"
+    botexpress_auth_scheme: str = "Bearer"
 
     request_timeout: int = 10
 
