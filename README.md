@@ -287,6 +287,50 @@ A camada `exceptions` padroniza os erros retornados pela API.
 
 A integração com o BotExpress está isolada no arquivo `botexpress_service.py`. Caso o endpoint, autenticação ou formato de payload do BotExpress seja diferente no ambiente real, o ajuste fica concentrado nessa camada.
 
+## Limitações conhecidas
+
+Esta versão representa um MVP técnico do middleware e possui algumas limitações conhecidas:
+
+### Idempotência
+
+O controle de idempotência atual utiliza armazenamento em memória por meio de um `set` global.
+
+Essa abordagem funciona para demonstração local, mas não é adequada para produção, pois os dados são perdidos em caso de reinício da aplicação, novo deploy, crash ou execução em múltiplas instâncias.
+
+Em produção, recomenda-se substituir essa implementação por Redis com TTL ou banco de dados.
+
+### Integração com BotExpress
+
+A integração com o BotExpress foi isolada na camada `BotExpressService`.
+
+O endpoint utilizado nessa camada deve ser validado e ajustado conforme a documentação oficial ou as credenciais fornecidas no ambiente real do desafio.
+
+Essa decisão foi tomada para manter a arquitetura desacoplada e permitir que alterações no formato de autenticação, endpoint ou payload fiquem concentradas em um único arquivo.
+
+### Tipos de mensagem
+
+O middleware atualmente processa apenas mensagens textuais.
+
+Mensagens de áudio, imagem, documento, vídeo ou outros tipos de mídia não fazem parte do escopo inicial desta versão.
+
+Em uma versão de produção, esses tipos devem ser tratados explicitamente, com download de mídia, transcrição de áudio, OCR de imagens ou resposta controlada informando que o tipo de mensagem não é suportado.
+
+### Segurança do webhook
+
+A versão inicial ainda não possui validação de segredo no webhook.
+
+Em produção, recomenda-se validar um token enviado no header da requisição, como `X-Webhook-Secret`, para evitar chamadas não autorizadas ao endpoint.
+
+### Rate limiting
+
+A aplicação ainda não possui rate limiting.
+
+Em ambiente produtivo, recomenda-se utilizar API Gateway, proxy reverso ou middleware específico para limitar requisições e reduzir risco de flood.
+
+### Escalabilidade
+
+A aplicação foi estruturada em camadas para facilitar evolução, mas recursos como fila, Redis, persistência de conversas e observabilidade ainda estão listados como melhorias futuras.
+
 ## Melhorias futuras
 
 * Persistência de conversas em PostgreSQL
