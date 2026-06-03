@@ -72,7 +72,7 @@ async def process_incoming_message(
 async def receive_zapi_message(
     payload: dict = Body(
         ...,
-        example={
+        examples={
             "phone": "5535999999999",
             "text": {
                 "message": "Olá"
@@ -92,7 +92,7 @@ async def receive_zapi_message(
 async def receive_evolution_message(
     payload: dict = Body(
         ...,
-        example={
+        examples={
             "data": {
                 "key": {
                     "remoteJid": "5535999999999@s.whatsapp.net",
