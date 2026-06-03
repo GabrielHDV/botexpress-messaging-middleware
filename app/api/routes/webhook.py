@@ -28,7 +28,7 @@ async def process_incoming_message(
         incoming.message_id,
     )
 
-    if was_processed(incoming.message_id):
+    if await was_processed(incoming.message_id):
         logger.info(
             "Mensagem duplicada ignorada | provider=%s | message_id=%s",
             incoming.provider,
@@ -52,7 +52,7 @@ async def process_incoming_message(
         )
     )
 
-    mark_as_processed(incoming.message_id)
+    await mark_as_processed(incoming.message_id)
 
     logger.info(
         "Mensagem processada com sucesso | provider=%s | phone=%s | message_id=%s",
