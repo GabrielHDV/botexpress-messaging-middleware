@@ -44,6 +44,7 @@ class BotpressService:
                 client=client,
                 user_key=user_key,
                 conversation_id=conversation_id,
+                current_user_id=user_id,
             )
 
         return BotResponse(text=bot_text)
@@ -115,6 +116,7 @@ class BotpressService:
         client: httpx.AsyncClient,
         user_key: str,
         conversation_id: str,
+        current_user_id: str,
     ) -> str:
         for _ in range(settings.botpress_polling_attempts):
             await asyncio.sleep(settings.botpress_polling_interval)
@@ -131,12 +133,12 @@ class BotpressService:
 
             messages = data.get("messages", [])
 
-            for message in reversed(messages):
+            for message in messages:
                 payload = message.get("payload", {})
                 text = payload.get("text")
-                user_id = message.get("userId")
+                message_user_id = message.get("userId")
 
-                if text and not user_id:
+                if text and message_user_id != current_user_id:
                     return str(text)
 
         return "Não consegui obter uma resposta do agente no momento."
