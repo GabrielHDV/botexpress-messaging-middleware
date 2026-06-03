@@ -1,10 +1,10 @@
-# BotExpress Messaging Middleware
+# Botpress Messaging Middleware
 
-Middleware para integração entre agentes conversacionais criados no BotExpress e provedores de mensageria como Z-API e Evolution API.
+Middleware para integração entre agentes conversacionais criados no Botpress e provedores de mensageria como Z-API e Evolution API.
 
 ## Objetivo
 
-O objetivo deste projeto é receber mensagens por webhook, encaminhá-las para um agente conversacional no BotExpress e retornar a resposta ao usuário final por meio de um provedor externo de mensageria.
+O objetivo deste projeto é receber mensagens por webhook, encaminhá-las para um agente conversacional no Botpress e retornar a resposta ao usuário final por meio de um provedor externo de mensageria.
 
 A aplicação foi construída com foco em organização, desacoplamento, segurança de credenciais, tratamento de exceções e facilidade de manutenção.
 
@@ -14,7 +14,7 @@ A aplicação foi construída com foco em organização, desacoplamento, seguran
 Canal de mensagem
 → Z-API / Evolution API
 → FastAPI Middleware
-→ BotExpress
+→ Botpress Chat API
 → FastAPI Middleware
 → Z-API / Evolution API
 → Usuário final
@@ -30,6 +30,7 @@ Canal de mensagem
 * Docker
 * Docker Compose
 * Pytest
+* Botpress Chat API
 * Z-API
 * Evolution API
 
@@ -37,7 +38,7 @@ Canal de mensagem
 
 * Recebimento de mensagens via webhook
 * Normalização de payloads de diferentes provedores
-* Integração com agente conversacional BotExpress
+* Integração com agente conversacional Botpress via Chat API
 * Envio de respostas por provedor configurável
 * Suporte inicial para Z-API e Evolution API
 * Seleção dinâmica de provedor via variável de ambiente
@@ -50,6 +51,18 @@ Canal de mensagem
 * Controle simples de idempotência
 * Testes básicos
 * Suporte a Docker
+
+## Agente conversacional
+
+O agente conversacional foi criado no Botpress com o nome **Retta Tech Assistant**.
+
+Ele simula um pré-atendimento comercial e técnico para uma empresa de tecnologia B2B, utilizando instruções personalizadas, base de conhecimento com páginas do site da empresa, tabela estruturada de serviços e learnings salvos a partir dos testes no emulador.
+
+A documentação completa do agente está disponível em:
+
+```txt
+docs/botpress-agent.md
+```
 
 ## Estrutura do projeto
 
@@ -73,7 +86,7 @@ app/
 ├── schemas/
 │   └── message.py
 ├── services/
-│   ├── botexpress_service.py
+│   ├── botpress_service.py
 │   ├── idempotency_service.py
 │   └── payload_parser.py
 └── main.py
@@ -84,8 +97,8 @@ app/
 Clone o repositório:
 
 ```bash
-git clone https://github.com/GabrielHDV/botexpress-messaging-middleware.git
-cd botexpress-messaging-middleware
+git clone https://github.com/GabrielHDV/botpress-messaging-middleware.git
+cd botpress-messaging-middleware
 ```
 
 Crie e ative o ambiente virtual:
@@ -202,7 +215,7 @@ Exemplo de payload textual:
 
 ```env
 ENVIRONMENT=development
-APP_NAME=BotExpress Messaging Middleware
+APP_NAME=Botpress Messaging Middleware
 
 WEBHOOK_SECRET=change-me
 
@@ -216,11 +229,9 @@ EVOLUTION_BASE_URL=
 EVOLUTION_INSTANCE_NAME=
 EVOLUTION_API_KEY=
 
-BOTEXPRESS_BASE_URL=
-BOTEXPRESS_API_KEY=
-BOTEXPRESS_ENDPOINT_PATH=
-BOTEXPRESS_AUTH_HEADER=Authorization
-BOTEXPRESS_AUTH_SCHEME=Bearer
+BOTPRESS_WEBHOOK_ID=
+BOTPRESS_POLLING_ATTEMPTS=8
+BOTPRESS_POLLING_INTERVAL=1
 
 REQUEST_TIMEOUT=10
 ```
@@ -235,7 +246,13 @@ X-Webhook-Secret: change-me
 
 Quando a variável `WEBHOOK_SECRET` está configurada, todas as chamadas aos webhooks precisam enviar o mesmo valor no header `X-Webhook-Secret`.
 
-Caso o header esteja ausente ou incorreto, a API retorna:
+Também é possível enviar o segredo por query param em cenários onde o provedor de webhook não permite configurar headers customizados:
+
+```txt
+/webhooks/zapi?secret=change-me
+```
+
+Caso o segredo esteja ausente ou incorreto, a API retorna:
 
 ```json
 {
@@ -261,21 +278,32 @@ evolution
 
 A seleção do provedor utiliza `lru_cache` e injeção de dependência com `Depends`, evitando recriação desnecessária da instância do provider a cada requisição.
 
-## Adapter BotExpress
+## Integração com Botpress
 
-A integração com o BotExpress foi implementada como um adapter configurável.
+A integração com o agente conversacional foi implementada utilizando a Botpress Chat API.
 
-As informações de endpoint, autenticação e caminho da API são definidas por variáveis de ambiente:
+O middleware recebe a mensagem enviada pelo usuário, normaliza o payload recebido da Z-API ou Evolution API e encaminha essa mensagem para o agente configurado no Botpress.
+
+As configurações da integração são definidas por variáveis de ambiente:
 
 ```env
-BOTEXPRESS_BASE_URL=
-BOTEXPRESS_API_KEY=
-BOTEXPRESS_ENDPOINT_PATH=
-BOTEXPRESS_AUTH_HEADER=Authorization
-BOTEXPRESS_AUTH_SCHEME=Bearer
+BOTPRESS_WEBHOOK_ID=
+BOTPRESS_POLLING_ATTEMPTS=8
+BOTPRESS_POLLING_INTERVAL=1
 ```
 
-Essa decisão evita acoplamento com um endpoint fixo e permite ajustar a integração conforme a documentação oficial, credenciais ou ambiente real disponibilizado para o desafio.
+O `BOTPRESS_WEBHOOK_ID` representa o identificador da integração Chat do Botpress, utilizado para comunicação com a Chat API.
+
+O fluxo básico da integração é:
+
+```txt
+1. Criar usuário no Botpress
+2. Criar ou recuperar conversa
+3. Enviar mensagem do usuário para o agente
+4. Aguardar a resposta do agente
+5. Retornar a resposta para o middleware
+6. Enviar a resposta ao usuário final pelo provedor configurado
+```
 
 ## Escopo de mensagens
 
@@ -329,7 +357,7 @@ A camada `core` concentra configurações, autenticação simples de webhook, lo
 
 A camada `providers` concentra as integrações com provedores externos de mensageria, como Z-API e Evolution API.
 
-A camada `services` concentra integrações e regras auxiliares, como comunicação com BotExpress, normalização de payloads e controle de idempotência.
+A camada `services` concentra integrações e regras auxiliares, como comunicação com Botpress, normalização de payloads e controle de idempotência.
 
 A camada `schemas` define modelos normalizados para entrada, saída e resposta do bot.
 
@@ -347,11 +375,13 @@ Essa abordagem funciona para demonstração local, mas não é adequada para pro
 
 Em produção, recomenda-se substituir essa implementação por Redis com TTL ou banco de dados.
 
-### Integração com BotExpress
+### Integração com Botpress
 
-O endpoint utilizado no adapter BotExpress deve ser validado e ajustado conforme a documentação oficial ou as credenciais fornecidas no ambiente real do desafio.
+A integração com o Botpress utiliza a Chat API e depende do Webhook ID da integração Chat configurada na plataforma.
 
-Essa decisão mantém a arquitetura desacoplada e permite que alterações no formato de autenticação, endpoint ou payload fiquem concentradas em um único arquivo.
+A versão atual se comunica com o agente e recebe respostas reais, mas ainda não persiste dados como `x-user-key`, histórico de conversa ou informações de sessão.
+
+Em produção, recomenda-se persistir esses dados em banco de dados ou Redis para manter continuidade de conversas e evitar recriações desnecessárias de usuários.
 
 ### Tipos de mensagem
 
@@ -375,6 +405,7 @@ A aplicação foi estruturada em camadas para facilitar evolução, mas recursos
 
 * Persistência de conversas em PostgreSQL
 * Redis para idempotência e controle de sessão
+* Persistência de `x-user-key` do Botpress
 * Rate limiting
 * Testes com mock de APIs externas
 * Deploy em cloud

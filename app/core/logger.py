@@ -6,4 +6,4 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
-logger = logging.getLogger("botexpress-messaging-middleware")
+logger = logging.getLogger("botpress-messaging-middleware")
