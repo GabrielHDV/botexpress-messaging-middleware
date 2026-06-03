@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 
+from app.api.routes.webhook import router as webhook_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -7,6 +8,8 @@ app = FastAPI(
     version="1.0.0",
     description="Middleware para integrar BotExpress com provedores de mensageria.",
 )
+
+app.include_router(webhook_router)
 
 
 @app.get("/health", tags=["Health"])
