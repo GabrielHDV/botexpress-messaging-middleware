@@ -1,7 +1,9 @@
 from fastapi import FastAPI
 
+from app.core.config import settings
+
 app = FastAPI(
-    title="BotExpress Messaging Middleware",
+    title=settings.app_name,
     version="1.0.0",
     description="Middleware para integrar BotExpress com provedores de mensageria.",
 )
@@ -11,5 +13,5 @@ app = FastAPI(
 def health_check():
     return {
         "status": "ok",
-        "message": "API is running",
+        "environment": settings.environment,
     }
