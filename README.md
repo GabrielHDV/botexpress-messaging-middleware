@@ -6,7 +6,7 @@ Middleware para integração entre agentes conversacionais criados no BotExpress
 
 O objetivo deste projeto é receber mensagens por webhook, encaminhá-las para um agente conversacional no BotExpress e retornar a resposta ao usuário final por meio de um provedor externo de mensageria.
 
-A aplicação foi construída com foco em organização, desacoplamento, tratamento de exceções, segurança de credenciais e facilidade de manutenção.
+A aplicação foi construída com foco em organização, desacoplamento, segurança de credenciais, tratamento de exceções e facilidade de manutenção.
 
 ## Arquitetura
 
@@ -39,9 +39,11 @@ Canal de mensagem
 * Normalização de payloads de diferentes provedores
 * Integração com agente conversacional BotExpress
 * Envio de respostas por provedor configurável
-* Suporte inicial para Z-API
-* Suporte inicial para Evolution API
+* Suporte inicial para Z-API e Evolution API
 * Seleção dinâmica de provedor via variável de ambiente
+* Cache do provider com `lru_cache`
+* Injeção de dependência com `Depends`
+* Autenticação simples dos webhooks com `X-Webhook-Secret`
 * Logs estruturados
 * Mascaramento de telefone em logs
 * Tratamento centralizado de exceções
@@ -57,6 +59,7 @@ app/
 │   └── routes/
 │       └── webhook.py
 ├── core/
+│   ├── auth.py
 │   ├── config.py
 │   ├── logger.py
 │   └── security.py
@@ -159,7 +162,7 @@ Resposta esperada:
 POST /webhooks/zapi
 ```
 
-Exemplo de payload:
+Exemplo de payload textual:
 
 ```json
 {
@@ -178,7 +181,7 @@ Exemplo de payload:
 POST /webhooks/evolution
 ```
 
-Exemplo de payload:
+Exemplo de payload textual:
 
 ```json
 {
@@ -224,7 +227,7 @@ REQUEST_TIMEOUT=10
 
 ## Autenticação dos webhooks
 
-Os endpoints de webhook utilizam uma autenticação simples baseada no header:
+Os endpoints de webhook utilizam autenticação simples baseada no header:
 
 ```http
 X-Webhook-Secret: change-me
@@ -241,7 +244,22 @@ Caso o header esteja ausente ou incorreto, a API retorna:
 }
 ```
 
-Essa abordagem reduz o risco de chamadas não autorizadas aos endpoints públicos do middleware.
+## Seleção de provedor
+
+O provedor de mensageria é definido pela variável:
+
+```env
+MESSAGING_PROVIDER=zapi
+```
+
+Valores suportados inicialmente:
+
+```txt
+zapi
+evolution
+```
+
+A seleção do provedor utiliza `lru_cache` e injeção de dependência com `Depends`, evitando recriação desnecessária da instância do provider a cada requisição.
 
 ## Adapter BotExpress
 
@@ -273,50 +291,6 @@ Payloads contendo mídia, como imagem, áudio, vídeo, documento, figurinha, loc
 ```
 
 Essa decisão mantém o escopo inicial objetivo e evita processamentos incompletos de mídia sem tratamento adequado.
-
-## Seleção de provedor
-
-O provedor de mensageria é definido pela variável:
-
-```env
-MESSAGING_PROVIDER=zapi
-```
-
-Valores suportados inicialmente:
-
-```txt
-zapi
-evolution
-```
-
-A seleção do provedor utiliza cache com `lru_cache` e injeção de dependência com `Depends`, evitando recriação desnecessária do provider a cada requisição.
-
-
-## Seleção de provedor
-
-O provedor de mensageria é definido pela variável:
-
-```env
-MESSAGING_PROVIDER=zapi
-```
-
-Valores suportados inicialmente:
-
-```txt
-zapi
-evolution
-```
-
-## Segurança
-
-O projeto adota algumas práticas básicas de segurança:
-
-* Credenciais armazenadas em variáveis de ambiente
-* Arquivo `.env` ignorado pelo Git
-* Mascaramento de telefone em logs
-* Timeout em chamadas externas
-* Tratamento padronizado de erros
-* Separação entre rotas, serviços e provedores
 
 ## Tratamento de erros
 
@@ -351,6 +325,8 @@ A aplicação foi construída com foco em desacoplamento e evolução gradual.
 
 A camada `api` concentra as rotas HTTP e webhooks.
 
+A camada `core` concentra configurações, autenticação simples de webhook, logger e utilitários de segurança.
+
 A camada `providers` concentra as integrações com provedores externos de mensageria, como Z-API e Evolution API.
 
 A camada `services` concentra integrações e regras auxiliares, como comunicação com BotExpress, normalização de payloads e controle de idempotência.
@@ -359,19 +335,9 @@ A camada `schemas` define modelos normalizados para entrada, saída e resposta d
 
 A camada `exceptions` padroniza os erros retornados pela API.
 
-A camada `core` concentra configurações, autenticação simples de webhook, logger e utilitários de segurança.
-
-O projeto utiliza `Depends` do FastAPI para injetar o provedor de mensageria nas rotas, e `lru_cache` para evitar recriações desnecessárias da instância do provider.
-
-A integração com o BotExpress foi mantida como adapter configurável, permitindo ajuste do endpoint e do formato de autenticação conforme o ambiente real.
-
-## Observações
-
-A integração com o BotExpress está isolada no arquivo `botexpress_service.py`. Caso o endpoint, autenticação ou formato de payload do BotExpress seja diferente no ambiente real, o ajuste fica concentrado nessa camada.
-
 ## Limitações conhecidas
 
-Esta versão representa um MVP técnico do middleware e possui algumas limitações conhecidas:
+Esta versão representa um MVP técnico do middleware e possui algumas limitações conhecidas.
 
 ### Idempotência
 
@@ -383,11 +349,9 @@ Em produção, recomenda-se substituir essa implementação por Redis com TTL ou
 
 ### Integração com BotExpress
 
-A integração com o BotExpress foi isolada na camada `BotExpressService`.
+O endpoint utilizado no adapter BotExpress deve ser validado e ajustado conforme a documentação oficial ou as credenciais fornecidas no ambiente real do desafio.
 
-O endpoint utilizado nessa camada deve ser validado e ajustado conforme a documentação oficial ou as credenciais fornecidas no ambiente real do desafio.
-
-Essa decisão foi tomada para manter a arquitetura desacoplada e permitir que alterações no formato de autenticação, endpoint ou payload fiquem concentradas em um único arquivo.
+Essa decisão mantém a arquitetura desacoplada e permite que alterações no formato de autenticação, endpoint ou payload fiquem concentradas em um único arquivo.
 
 ### Tipos de mensagem
 
@@ -396,12 +360,6 @@ O middleware atualmente processa apenas mensagens textuais.
 Mensagens de áudio, imagem, documento, vídeo ou outros tipos de mídia não fazem parte do escopo inicial desta versão.
 
 Em uma versão de produção, esses tipos devem ser tratados explicitamente, com download de mídia, transcrição de áudio, OCR de imagens ou resposta controlada informando que o tipo de mensagem não é suportado.
-
-### Segurança do webhook
-
-A versão inicial ainda não possui validação de segredo no webhook.
-
-Em produção, recomenda-se validar um token enviado no header da requisição, como `X-Webhook-Secret`, para evitar chamadas não autorizadas ao endpoint.
 
 ### Rate limiting
 
@@ -418,8 +376,8 @@ A aplicação foi estruturada em camadas para facilitar evolução, mas recursos
 * Persistência de conversas em PostgreSQL
 * Redis para idempotência e controle de sessão
 * Rate limiting
-* Autenticação no webhook
 * Testes com mock de APIs externas
 * Deploy em cloud
 * Observabilidade com Grafana
 * Pipeline CI/CD com GitHub Actions
+
